@@ -3,17 +3,25 @@ const express = require('express')
 const hbs = require('hbs')
 const geocode = require('./utils/geocode')
 const forecast = require('./utils/forecast')
+const getCityFromCoordinates = require('./utils/axios')
+
+const http = require('http') // You need this to create the server
+const socketio = require('socket.io') // Import socket.io
+const { error } = require('console')
 
 console.log(__dirname)
 console.log(path.join(__dirname, '../public'))
 
 const app = express()
+const server = http.createServer(app) // Use the HTTP server to support WebSockets
+const io = socketio(server) // Create a new instance of Socket.IO
+
 const port = process.env.PORT || 3000
 
 // Define paths for Express config
 const publicDirectoryPath = path.join(__dirname, '../public')
-const viewsPath = path.join(__dirname, '../templates/views')
-const partialsPath = path.join(__dirname, '../templates/partials')
+const viewsPath = path.join(__dirname, '../public/views')
+const partialsPath = path.join(__dirname, '../public')
 
 // Setup handlebars engine and views location
 app.set('view engine', 'hbs')
@@ -22,6 +30,23 @@ hbs.registerPartials(partialsPath)
 
 // Setup static directory to serve
 app.use(express.static(publicDirectoryPath))
+
+io.on('connection', (socket) => {
+    console.log('New WebSocket connection')
+
+    socket.on('location', async (latitude, longitude) => {
+        const city = await getCityFromCoordinates(latitude, longitude)
+        const cityName = city.replace('City of ', '').trim()
+
+        forecast(latitude, longitude, (error, forecastData) => {
+            if (error) {
+                socket.emit('errorData', error)
+            } else {
+                socket.emit('data', cityName, forecastData)
+            }
+        })
+    })
+})
 
 app.get('', (req, res) => {
     res.render('index', {
@@ -105,6 +130,6 @@ app.get('*', (req, res) => {
     })
 })
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log('Server is up on port ' + port)
 })

@@ -53,3 +53,12 @@ button {
     color: white;
     padding: 8px;
 }
+
+.my-weather {
+    display: flex;
+    align-items: center; /* Vertically center the elements */
+}
+
+.my-weather h2 {
+    margin-right: 10px; /* Add some space between the <h2> and the button */
+}
